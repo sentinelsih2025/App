@@ -15,63 +15,79 @@ export default function SignupCard() {
     confirmPassword: "",
   });
 
-
-
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange =
     (key: keyof typeof form) =>
-      (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-        setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
-  const validate = () => {
-    if (!form.armyId.trim()) return "Army ID is required";
-    if (!form.militaryEmail.trim()) return "Military email is required";
+  // VALIDATION
+const validate = () => {
+  if (!form.armyId.trim()) return "Army ID is required";
+  if (!form.militaryEmail.trim()) return "Email is required";
 
-    if (
-      !(
-        form.militaryEmail.endsWith(".mil") ||
-        form.militaryEmail.endsWith("@army.mil") ||
-        form.militaryEmail.endsWith(".gov.in")
-      )
-    ) {
-      return "Use a valid military email address";
-    }
+  // ALLOW any normal email temporarily
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(form.militaryEmail)) return "Enter a valid email";
 
-    if (!form.location) return "Select your military location/base";
+  if (!form.location) return "Select your military location/base";
+  if (!form.password.trim()) return "Password is required";
+  if (form.password.length < 6) return "Password must be at least 6 characters";
+  if (form.password !== form.confirmPassword) return "Passwords do not match";
 
-    if (!form.password.trim()) return "Password is required";
-    if (form.password.length < 6)
-      return "Password must be at least 6 characters";
-    if (form.password !== form.confirmPassword)
-      return "Passwords do not match";
-
-    return "";
-  };
+  return "";
+};
 
 
-
-
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    const err = validate();
-    if (err) return setError(err);
+    const validationError = validate();
+    if (validationError) return setError(validationError);
 
-    setSuccess("Account created successfully!");
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Signup failed");
+        return;
+      }
+
+      setSuccess("Account created successfully!");
+      setForm({
+        armyId: "",
+        armyPos: "",
+        militaryEmail: "",
+        location: "",
+        otp: "",
+        password: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      setError("Internal Server Error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="h-screen w-full flex items-center justify-center overflow-hidden bg-fixed bg-[radial-gradient(circle_at_30%_20%,#2e4f2f_0%,#0f1a0f_40%,#0a140a_70%)]">
-
       <div className="bg-[#1b2a1f]/90 border border-green-700 shadow-xl p-8 rounded-2xl w-full max-w-md text-green-100 backdrop-blur-sm">
-
         <h2 className="text-2xl font-bold mb-2 text-center tracking-widest text-green-300">
           RAKSHAK HQ SIGNUP
         </h2>
@@ -80,7 +96,6 @@ export default function SignupCard() {
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-
           {/* ARMY ID */}
           <input
             type="text"
@@ -104,9 +119,6 @@ export default function SignupCard() {
             <option value="officer">Officer</option>
           </select>
 
-
-
-
           {/* LOCATION DROPDOWN */}
           <select
             value={form.location}
@@ -123,7 +135,6 @@ export default function SignupCard() {
             <option value="Training Command">Training Command</option>
           </select>
 
-
           {/* MILITARY EMAIL */}
           <input
             type="email"
@@ -132,8 +143,6 @@ export default function SignupCard() {
             onChange={handleChange("militaryEmail")}
             className="w-full p-3 rounded-lg bg-[#132016] border border-green-700 focus:border-green-400 outline-none text-green-100"
           />
-
-
 
           {/* PASSWORD */}
           <div className="relative">
@@ -172,19 +181,16 @@ export default function SignupCard() {
           </div>
 
           {/* ERROR / SUCCESS */}
-          {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          )}
-          {success && (
-            <p className="text-green-300 text-sm text-center">{success}</p>
-          )}
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          {success && <p className="text-green-300 text-sm text-center">{success}</p>}
 
           {/* SUBMIT */}
           <button
             type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 transition py-3 rounded-lg font-semibold tracking-wide"
+            disabled={loading}
+            className="w-full bg-green-600 hover:bg-green-700 transition py-3 rounded-lg font-semibold tracking-wide disabled:opacity-50"
           >
-            Create Account
+            {loading ? "Creating..." : "Create Account"}
           </button>
         </form>
 

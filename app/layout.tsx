@@ -17,9 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body className="antialiased h-screen flex">
-        <NavbarWrapper />  {/* Hide/show automatically */}
-        <main className="flex-1 h-full overflow-auto">{children}</main>
+      <body className="antialiased h-screen">
+        <NavbarWrapper />   {/* stays fixed at top */}
+        
+        {/* Push content below navbar height */}
+        <main className="pt-[70px] h-full overflow-auto">
+          {children}
+        </main>
       </body>
     </html>
   );
