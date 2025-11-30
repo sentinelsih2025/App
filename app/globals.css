@@ -11,6 +11,26 @@
   display: none;               /* Chrome/Safari/Edge (Chromium) */
 }
 
+/* Custom Scrollbar */
+
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #0E1525;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: #1E2A3E;
+  border-radius: 10px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background: #2A3A55;
+}
+
+
 /* :root {
   --background: #ffffff;
   --foreground: #171717;

@@ -1,7 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -14,6 +14,7 @@ export default function LoginCard() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const router = useRouter();
 
   const handleChange =
     (key: keyof typeof form) =>
@@ -26,7 +27,7 @@ export default function LoginCard() {
     return "";
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -34,19 +35,46 @@ export default function LoginCard() {
     const err = validate();
     if (err) return setError(err);
 
-    setSuccess("Login successful!");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          armyId: form.armyId, // 🔥 FIXED
+          password: form.password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Invalid Army ID or password");
+        return;
+      }
+
+      setSuccess("Login successful!");
+
+      // 🔥 Optional: store token
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
+      // 🔥 Redirect to dashboard/home
+      router.push("/home");
+
+    } catch (error) {
+      setError("Unable to login. Please try again.");
+    }
   };
 
   return (
-   <div
-  className="min-h-screen w-full flex items-center justify-center p-6 
-  bg-fixed
-  bg-[radial-gradient(circle_at_30%_20%,#2e4f2f_0%,#0f1a0f_40%,#0a140a_70%)]
-  bg-blend-overlay overflow-hidden"
->
+    <div
+      className="min-h-screen w-full flex items-center justify-center p-6 
+      bg-fixed bg-[radial-gradient(circle_at_30%_20%,#2e4f2f_0%,#0f1a0f_40%,#0a140a_70%)]
+      bg-blend-overlay overflow-hidden -mt-[70px]"
+    >
+      <div className="bg-[#1b2a1f]/90 border border-green-700 shadow-xl p-8 rounded-2xl w-full max-w-md text-green-100 backdrop-blur-sm">
 
-      <div className="bg-[#1b2a1f]/90 border border-green-700 shadow-xl p-8 rounded-2xl w-full max-w-md text-green-100 backdrop-blur-sm over">
-        
         <h2 className="text-2xl font-bold mb-2 text-center tracking-widest text-green-300">
           RAKSHAK HQ LOGIN
         </h2>
@@ -55,15 +83,13 @@ export default function LoginCard() {
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
-          
           {/* ARMY ID */}
           <input
             type="text"
             placeholder="Army ID / Service Number"
             value={form.armyId}
             onChange={handleChange("armyId")}
-            className="w-full p-3 rounded-lg bg-[#132016] border border-green-700 
-            focus:border-green-400 outline-none text-green-100"
+            className="w-full p-3 rounded-lg bg-[#132016] border border-green-700 focus:border-green-400 outline-none text-green-100"
           />
 
           {/* PASSWORD */}
@@ -73,8 +99,7 @@ export default function LoginCard() {
               placeholder="Password"
               value={form.password}
               onChange={handleChange("password")}
-              className="w-full p-3 rounded-lg bg-[#132016] border border-green-700 
-              focus:border-green-400 outline-none text-green-100 pr-10"
+              className="w-full p-3 rounded-lg bg-[#132016] border border-green-700 focus:border-green-400 outline-none text-green-100 pr-10"
             />
 
             <button
@@ -87,18 +112,12 @@ export default function LoginCard() {
           </div>
 
           {/* ERROR / SUCCESS */}
-          {error && (
-            <p className="text-red-400 text-sm text-center">{error}</p>
-          )}
-          {success && (
-            <p className="text-green-300 text-sm text-center">{success}</p>
-          )}
+          {error && <p className="text-red-400 text-sm text-center">{error}</p>}
+          {success && <p className="text-green-300 text-sm text-center">{success}</p>}
 
-          {/* SUBMIT BUTTON */}
           <button
             type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 transition 
-            py-3 rounded-lg font-semibold tracking-wide"
+            className="w-full bg-green-600 hover:bg-green-700 transition py-3 rounded-lg font-semibold tracking-wide"
           >
             Login
           </button>

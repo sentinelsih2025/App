@@ -20,7 +20,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
   return (
     <div
       className="
-        fixed top-0 left-0 w-full h-[70px] bg-indigo-950 border-b border-black/20 
+        fixed top-0 left-0 w-full h-[70px] bg-[#000d2b] border-b border-white/20 
         flex items-center justify-between px-6 z-50
       "
     >
@@ -45,15 +45,6 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
           </Link>
         </li>
 
-        <li>
-          <Link
-            href="/Agent"
-            className="flex items-center gap-2 px-3 py-2 bg-[#263119] hover:bg-[#FFD700] text-green-100 hover:text-black rounded transition"
-          >
-            <span className={iconBaseClass}>shield_person</span>
-            <span>Agent</span>
-          </Link>
-        </li>
 
         <li>
           <Link
@@ -67,7 +58,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
       </ul>
 
       {/* RIGHT SECTION */}
-      <div>
+      {/* <div>
         <button
           onClick={() => setShowUpload(true)}
           className="flex items-center gap-2 px-4 py-2 bg-yellow-700 hover:bg-yellow-400 text-white hover:text-black rounded transition"
@@ -75,7 +66,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
           <span className={iconBaseClass}>upload</span>
           <span>Upload</span>
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

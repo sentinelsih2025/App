@@ -17,11 +17,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
 
-      <body className="antialiased h-screen">
+      <body className="antialiased h-screen ">
         <NavbarWrapper />   {/* stays fixed at top */}
         
         {/* Push content below navbar height */}
-        <main className="pt-[70px] h-full overflow-auto">
+        <main className="pt-[70px] h-full overflow-auto custom-scroll">
           {children}
         </main>
       </body>

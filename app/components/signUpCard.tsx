@@ -3,6 +3,7 @@
 import Link from "next/link";
 import React, { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function SignupCard() {
   const [form, setForm] = useState({
@@ -20,6 +21,8 @@ export default function SignupCard() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
 
   const handleChange =
     (key: keyof typeof form) =>
@@ -43,50 +46,58 @@ const validate = () => {
   return "";
 };
 
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  const validationError = validate();
+  if (validationError) return setError(validationError);
 
-    const validationError = validate();
-    if (validationError) return setError(validationError);
+  try {
+    setLoading(true);
 
-    try {
-      setLoading(true);
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
 
-      const res = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
+    const data = await res.json();
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Signup failed");
-        return;
-      }
-
-      setSuccess("Account created successfully!");
-      setForm({
-        armyId: "",
-        armyPos: "",
-        militaryEmail: "",
-        location: "",
-        otp: "",
-        password: "",
-        confirmPassword: "",
-      });
-    } catch (error) {
-      setError("Internal Server Error");
-    } finally {
-      setLoading(false);
+    if (!res.ok) {
+      setError(data.error || "Signup failed");
+      return;
     }
-  };
+
+    setSuccess("Account created successfully!");
+
+    // Clear form
+    setForm({
+      armyId: "",
+      armyPos: "",
+      militaryEmail: "",
+      location: "",
+      otp: "",
+      password: "",
+      confirmPassword: "",
+    });
+
+    // 🔥 Redirect to login page (after 1 second or immediately)
+    setTimeout(() => {
+      router.push("/login");
+    }, 500);
+
+  } catch (error) {
+    setError("Internal Server Error");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
-    <div className="h-screen w-full flex items-center justify-center overflow-hidden bg-fixed bg-[radial-gradient(circle_at_30%_20%,#2e4f2f_0%,#0f1a0f_40%,#0a140a_70%)]">
+    <div className="h-screen w-full flex items-center justify-center overflow-hidden bg-fixed bg-[radial-gradient(circle_at_30%_20%,#2e4f2f_0%,#0f1a0f_40%,#0a140a_70%)] -mt-[70px]">
       <div className="bg-[#1b2a1f]/90 border border-green-700 shadow-xl p-8 rounded-2xl w-full max-w-md text-green-100 backdrop-blur-sm">
         <h2 className="text-2xl font-bold mb-2 text-center tracking-widest text-green-300">
           RAKSHAK HQ SIGNUP
