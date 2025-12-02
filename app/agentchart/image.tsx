@@ -75,12 +75,8 @@ export default function Chart() {
   }, [messages]);
 
   return (
-    <div className="h-[90vh] w-[50vw] bg-gray-100 top-0 relative flex flex-col">
-      <div className="flex items-center gap-3 p-4">
-        <h1 className="text-gray-900 text-2xl font-semibold">Chat with Agent</h1>
-      </div>
-
-      <hr />
+    <div className="h-[90vh] top-0 relative flex flex-col">
+      
 
       {/* Scrollable messages container */}
       <div
@@ -110,29 +106,31 @@ export default function Chart() {
       </div>
 
       {/* Input area */}
-      <div className="w-full p-2 flex items-center space-x-2 absolute bottom-0 bg-gray-100">
-        <textarea
-          ref={textareaRef}
-          placeholder="Type your message..."
-          value={input}
-          onInput={handleSize}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSend();
-            }
-          }}
-          className="bg-white flex-1 resize-none rounded-md px-3 py-2 -mt-6 text-sm text-gray-800 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-700 shadow-sm min-h-10 max-h-[150px] overflow-y-auto"
-        />
+   <div className="w-full p-3 flex items-center space-x-2">
+  <textarea
+    ref={textareaRef}
+    placeholder="Type your message..."
+    value={input}
+    onInput={handleSize}
+    onChange={(e) => setInput(e.target.value)}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    }}
+    className="bg-white flex-1 resize-none rounded-lg px-4 py-3 text-sm text-gray-800 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm min-h-12 max-h-[160px] overflow-y-auto"
+  />
+  
+  <button
+    className="flex items-center justify-center w-12 h-12 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 transition-all duration-200 shadow-md flex-shrink-0"
+    onClick={handleSend}
+  >
+    <span className="material-symbols-outlined text-lg">send</span>
+  </button>
+</div>
 
-        <button
-          className="flex items-center justify-center w-12 h-full rounded-md bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800 transition-colors duration-200 shadow-sm py-3"
-          onClick={handleSend}
-        >
-          <span className="material-symbols-outlined text-lg">send</span>
-        </button>
-      </div>
+
     </div>
   );
 }

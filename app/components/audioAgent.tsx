@@ -5,12 +5,12 @@ export default function audioAgent() {
              {/* AUDIO AGENT */}
           <div className="flex items-start gap-4 justify-center">
 
-            {/* ICON */}
+            {/* ICON
             <div className="w-20 h-20 rounded-2xl flex items-center justify-center self-center 
       border border-purple-400/40 bg-[rgba(179,0,255,0.1)] 
       shadow-[0_0_8px_2px_rgba(200,0,255,0.4)] backdrop-blur-md">
               <span className="text-xs tracking-wide text-purple-300 font-semibold">AUDIO</span>
-            </div>
+            </div> */}
 
             {/* BOX */}
             <div className="flex-1 relative bg-[#111929] border border-purple-500 rounded-xl p-4 shadow-lg shadow-black/20 backdrop-blur-sm overflow-hidden">

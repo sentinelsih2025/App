@@ -39,8 +39,7 @@ export async function POST(req: Request) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    const key = `uploads/${Date.now()}-${file.name}`;
+    const key = `uploads/${file.name}`;
 
     const putResult = await s3.send(
       new PutObjectCommand({
@@ -56,7 +55,11 @@ export async function POST(req: Request) {
 
     const fileUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
-    return NextResponse.json({ url: fileUrl });
+    return NextResponse.json({
+      url: fileUrl,
+      key: key  // <-- THIS NEW LINE RETURNS THE S3 KEY
+    });
+
   } catch (err) {
     // capture and surface the underlying error message (avoid printing secrets)
     console.error("UPLOAD ERROR:", err instanceof Error ? err.message : err);

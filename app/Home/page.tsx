@@ -6,6 +6,8 @@ import VideoAgent from "../components/videoAgent"
 import AudioAgent from "../components/audioAgent";
 import TextAgent from "../components/textAgent";
 
+import ImageData from "../components/imageData";
+
 
 
 export default function Home() {
@@ -19,15 +21,8 @@ export default function Home() {
         <h2 className="text-xl font-semibold tracking-wide text-[#7AA2F7]">
           DATA SOURCES
         </h2>
+        <ImageData />
 
-        <div className="bg-[#111929] rounded-xl p-4 border border-[#1E2A3E] 
-    h-56 shrink-0 flex flex-col justify-center items-center">
-          <p className="text-sm opacity-60">Surveillance Feed</p>
-          <div className="mt-2 w-full h-full bg-black/40 text-center flex items-center 
-      justify-center rounded-lg border border-[#1E2A3E] text-xs opacity-40">
-            No Signal
-          </div>
-        </div>
 
         <div className="bg-[#111929] rounded-xl p-4 border border-[#1E2A3E] 
     h-56 shrink-0 flex flex-col justify-center items-center">
@@ -86,11 +81,29 @@ export default function Home() {
               const data = await res.json();
 
               console.log("AWS URL:", data.url);
-              alert("Uploaded to AWS:\n" + data.url);
-            }}
+              console.log("S3 Key:", data.key);  // <-- NEW: Log the key
 
+              alert("Uploaded to AWS:\n" + data.url);
+
+              // *** NEW: Send the S3 key to your FastAPI backend to download & process ***
+              try {
+                const processRes = await fetch("http://localhost:8000/process", {  // <-- CHANGE TO YOUR FASTAPI URL
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ key: data.key }),  // <-- SEND THE S3 KEY
+                });
+
+                const processData = await processRes.json();
+                console.log("Backend processing result:", processData);
+                alert("Image downloaded to backend & ready for AI processing!");
+              } catch (error) {
+                console.error("Failed to trigger backend processing:", error);
+                alert("Upload successful but backend processing failed");
+              }
+            }}
             className="text-white"
           />
+
         </div>
 
 
@@ -103,7 +116,7 @@ export default function Home() {
           <h1 className="text-3xl font-bold text-[#7AA2F7] tracking-wide mb-6">MISSION CONTROL FEED</h1>
         </div>
 
-        <div className="space-y-28 p-7">
+        <div className="space-y-8 p-7">
 
           {/* IMAGE AGENT */}
 

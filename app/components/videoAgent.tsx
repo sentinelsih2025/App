@@ -26,11 +26,11 @@ export default function audioAgent() {
                     </p>
                 </div>
                 {/* ICON */}
-                <div className="w-20 h-20 rounded-2xl flex items-center justify-center self-center 
+                {/* <div className="w-20 h-20 rounded-2xl flex items-center justify-center self-center 
       border border-cyan-400/40 bg-[rgba(0,255,255,0.1)] 
       shadow-[0_0_8px_2px_rgba(0,255,255,0.4)] backdrop-blur-md">
                     <span className="text-xs tracking-wide text-cyan-300 font-semibold">VIDEO</span>
-                </div>
+                </div> */}
             </div>
         </div>
     )
