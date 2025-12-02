@@ -37,7 +37,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
       <ul className="flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
         <li>
           <Link
-            href="/Home"
+            href="/home"
             className="flex items-center gap-2 px-3 py-2 bg-[#263119] hover:bg-[#FFD700] text-green-100 hover:text-black rounded transition"
           >
             <span className={iconBaseClass}>home</span>
@@ -48,7 +48,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
 
         <li>
           <Link
-            href="/Resources"
+            href="/resources"
             className="flex items-center gap-2 px-3 py-2 bg-[#263119] hover:bg-[#FFD700] text-green-100 hover:text-black rounded transition"
           >
             <span className={iconBaseClass}>inventory_2</span>
