@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+
+
 
 interface VisualData {
     object_detection?: string[];
@@ -22,23 +25,18 @@ export default function ImageAgent() {
 
     useEffect(() => {
         fetch("http://localhost:8000/imagedata")
-            .then((res) => {
-                console.log("Response Status:", res.status);
-                return res.json();
-            })
+            .then((res) => res.json())
             .then((json) => {
-                console.log("Fetched Data:", json);
 
-                // 🚀 Extract first incident
                 if (json.incidents && json.incidents.length > 0) {
                     const first = json.incidents[0];
 
                     const mapped: SummaryData = {
                         file_name: first.file_name,
-                        file_type: "image", // default since backend didn't include
+                        file_type: "image",
                         timestamp: first.timestamp,
                         visual_data: {
-                            object_detection: first.key_findings || [], 
+                            object_detection: first.key_findings || [],
                             threat_posture: first.threat_level || "Unknown"
                         },
                         detailed_summary: first.detailed_summary
@@ -51,59 +49,89 @@ export default function ImageAgent() {
 
                 setLoading(false);
             })
-            .catch((err) => {
-                console.error("Fetch error:", err);
-                setLoading(false);
-            });
+            .catch(() => setLoading(false));
     }, []);
 
     if (loading) return <p>Loading...</p>;
     if (!data) return <p>No data found</p>;
 
-    const { file_name, file_type, timestamp, visual_data, detailed_summary } = data;
+    const { timestamp, visual_data, detailed_summary } = data;
 
     return (
         <div>
             <div className="flex items-start gap-4 justify-center">
-                <div className="flex-1 relative bg-[#111929] border border-lime-500 rounded-xl p-4 shadow-lg shadow-black/20 backdrop-blur-sm overflow-hidden">
+                <div className="
+    flex-1 relative 
+    bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))]
+    border border-[#1df2ff80] 
+    rounded-xl 
+    p-4 
+    overflow-hidden
+">
 
-                    <div className="absolute left-0 top-0 h-full w-1 bg-lime-400 rounded-l-xl"></div>
+
+                    <div className="absolute left-0 top-0 h-full w-1 bg-[#00ebf780] rounded-l-xl"></div>
 
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] opacity-40">
+                        <p className="text-[10px] opacity-50 text-[#b8d8ff]">
                             {new Date(timestamp).toLocaleString()}
                         </p>
 
                         <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-lime-300 tracking-wide">
+                            <h3 className="text-sm font-semibold text-[#1df2ff80] tracking-wide">
                                 IMAGE INTELLIGENCE
                             </h3>
-                            <span className="text-[10px] px-2 py-px rounded-full bg-lime-500/20 text-lime-400 tracking-wide">
+
+                            <span className="
+                                text-[10px] 
+                                px-2 py-px 
+                                rounded-full 
+                                bg-[#1df2ff20] 
+                                text-[#1df2ff] 
+                                tracking-wide
+                                border border-[#1df2ff50]
+                            ">
                                 Active
                             </span>
                         </div>
                     </div>
 
                     {visual_data && (
-                        <div>
+                        <div className="text-[#e6faff]">
                             <p>
-                                <strong>Object Detection:</strong>{" "}
+                                <strong className="text-[#1df2ff80]">Object Detection:</strong>{" "}
                                 {visual_data.object_detection?.join(", ") || "N/A"}
                             </p>
                             <p>
-                                <strong>Threat Posture:</strong>{" "}
+                                <strong className="text-[#1df2ff80]">Threat Posture:</strong>{" "}
                                 {visual_data.threat_posture ?? "N/A"}
                             </p>
                         </div>
                     )}
 
-                    <p><strong>Summary: </strong>{detailed_summary}</p>
+                    <p className="text-[#e6faff]">
+                        <strong className="text-[#1df2ff80]">Summary: </strong>
+                         <span className="text-[#e6faff] prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>{detailed_summary}</ReactMarkdown>
+                    </span>
+                    </p>
 
-                    <div className="flex items-end justify-end">
-                        <button className="bg-lime-700 py-1 px-3 rounded-3xl">
+                   
+
+                    <div className="flex items-end justify-end mt-3">
+                        <button className="
+                            bg-[#1df2ff30] 
+                            py-1 px-3 
+                            rounded-3xl 
+                            text-[#1df2ff] 
+                            border border-[#1df2ff70]
+                            hover:bg-[#1df2ff50]
+                            transition
+                        ">
                             <Link href="/image">View Details</Link>
                         </button>
                     </div>
+
                 </div>
             </div>
         </div>

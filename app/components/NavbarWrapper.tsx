@@ -10,7 +10,7 @@ export default function NavbarWrapper() {
   const [showUpload, setShowUpload] = useState(false);
 
   // pages where navbar must be hidden
-  const hideNavbarRoutes = ["/", "/login", "/signup","/image"];
+  const hideNavbarRoutes = ["/", "/login", "/signup","/image","/video","/audio","/text"];
 
   if (hideNavbarRoutes.includes(pathname)) {
     return null;

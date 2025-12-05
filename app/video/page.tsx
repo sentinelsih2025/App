@@ -43,7 +43,7 @@ interface DynamicFastAPIItem {
   content: DynamicFileContent; // The actual JSON content
 }
 
-export default function ImageDetail() {
+export default function VideoDetails() {
   const searchParams = useSearchParams();
   const key = searchParams?.get("key") ?? ""; // Note: This key is not directly used in the new flow
 
@@ -69,7 +69,7 @@ export default function ImageDetail() {
       try {
         setLoading(true);
         // Fetch only images
-        const res = await fetch("/api/files?type=image");
+        const res = await fetch("/api/files?type=video");
         const json = await res.json();
 
         if (!mounted) return;
@@ -98,7 +98,7 @@ export default function ImageDetail() {
 
     async function fetchSingleAndPrepend(keyParam: string) {
       try {
-        const res = await fetch(`/api/files?key=${encodeURIComponent(keyParam)}&type=image`);
+        const res = await fetch(`/api/files?key=${encodeURIComponent(keyParam)}&type=video`);
         if (!res.ok) return;
         const json = await res.json();
         const file = json.files?.[0] || null;
@@ -110,7 +110,7 @@ export default function ImageDetail() {
           return [file, ...without];
         });
       } catch (err) {
-        console.warn('Failed to fetch single image', err);
+        console.warn('Failed to fetch single video', err);
       }
     }
 
@@ -123,12 +123,12 @@ export default function ImageDetail() {
       if (k) fetchSingleAndPrepend(k);
     };
 
-    if (typeof window !== 'undefined') window.addEventListener('images-updated', handler);
+    if (typeof window !== 'undefined') window.addEventListener('video-updated', handler);
 
     return () => {
       mounted = false;
       mountedRef.current = false;
-      if (typeof window !== 'undefined') window.removeEventListener('images-updated', handler);
+      if (typeof window !== 'undefined') window.removeEventListener('video-updated', handler);
     };
   }, []);
 
@@ -145,10 +145,10 @@ export default function ImageDetail() {
 
       try {
         setFastLoading(true);
-        console.debug("Fetching all dynamic data from /image...");
+        console.debug("Fetching all dynamic data from /video...");
         
         // --- SWITCHED TO THE NEW ENDPOINT ---
-        const res = await fetch("http://localhost:8000/image"); 
+        const res = await fetch("http://localhost:8000/video"); 
         if (!res.ok) {
           throw new Error(`FastAPI /image returned status ${res.status}`);
         }
@@ -224,12 +224,12 @@ export default function ImageDetail() {
 
       {/* TITLE */}
       <h2 className="text-3xl font-bold mb-6 tracking-wide text-[#4CC9FF] drop-shadow-[0_0_5px_#4CC9FF]">
-        Image Data Source
+        Video Data Source
       </h2>
 
       {(loading || fastLoading) && (
         <div className="text-sm opacity-70 animate-pulse">
-          {loading ? "Loading images list..." : "Loading dynamic summaries..."}
+          {loading ? "Loading videos list..." : "Loading dynamic summaries..."}
         </div>
       )}
 
@@ -265,16 +265,16 @@ export default function ImageDetail() {
                     flex flex-col md:flex-row items-start gap-6
                   "
                 >
-                  {/* IMAGE - **Ensure f.url is a correct AWS URL for this to work** */}
+                  {/* VIDEO - **Ensure f.url is a correct AWS URL for this to work** */}
                   <div
                     className="
                       w-full md:w-1/3 h-56 rounded-lg overflow-hidden 
                       shadow-inner border border-[#1C2F4A] bg-black/40
                     "
                   >
-                    <img
+                    <video
                       src={f.url}
-                      alt={String(f.key)}
+                      controls
                       className="w-full h-full object-cover hover:scale-105 transition"
                     />
                   </div>
@@ -324,7 +324,7 @@ export default function ImageDetail() {
             );
           })
         ) : (
-          <div className="text-xs opacity-60">No uploaded images yet.</div>
+          <div className="text-xs opacity-60">No uploaded videos yet.</div>
         )}
       </div>
     </div>

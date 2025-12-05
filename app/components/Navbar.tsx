@@ -18,9 +18,12 @@ const iconBaseClass = "material-symbols-outlined text-[22px]";
 
 export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) => void }) {
   return (
-    <div
+
+   <div
       className="
-        fixed top-0 left-0 w-full h-[70px] bg-[#000d2b] border-b border-white/20 
+      bg-[#1A1C19]
+        fixed top-0 left-0 w-full h-[70px]
+        border-b border-white/20 
         flex items-center justify-between px-6 z-50
       "
     >
@@ -38,7 +41,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
         <li>
           <Link
             href="/home"
-            className="flex items-center gap-2 px-3 py-2 bg-[#263119] hover:bg-[#FFD700] text-green-100 hover:text-black rounded transition"
+            className="flex items-center gap-2 px-3 py-2 bg-[#ffffff15] hover:bg-[#ffffffb8] text-green-100 hover:text-black rounded transition"
           >
             <span className={iconBaseClass}>home</span>
             <span>Home</span>
@@ -49,7 +52,7 @@ export default function Navbar({ setShowUpload }: { setShowUpload: (v: boolean) 
         <li>
           <Link
             href="/resources"
-            className="flex items-center gap-2 px-3 py-2 bg-[#263119] hover:bg-[#FFD700] text-green-100 hover:text-black rounded transition"
+            className="flex items-center gap-2 px-3 py-2 bg-[#ffffff15] hover:bg-[#ffffffb8] text-green-100 hover:text-black rounded transition"
           >
             <span className={iconBaseClass}>inventory_2</span>
             <span>Recent Resources</span>
