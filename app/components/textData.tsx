@@ -1,155 +1,105 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useMemo, useEffect } from "react"
+import useSWR, { mutate } from "swr"
 
 type FileItem = { key?: string; url?: string; lastModified?: string | null }
 
-export default function textData() {
-    const [files, setFiles] = useState<FileItem[] | null>(null)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+// --- FETCHER ---
+const fetcher = async (url: string) => {
+    const res = await fetch(url)
+    // Basic error handling
+    if (!res.ok) {
+        const contentType = res.headers.get("content-type") || ""
+        if (contentType.includes("application/json")) {
+            const json = await res.json()
+            throw new Error(json.error || "Failed to fetch")
+        }
+        throw new Error("Server error")
+    }
+    return res.json()
+}
 
-    const mountedRef = useRef(true)
-
-    // Allowed text files
+export default function TextData() {
+    // 1. CONSTANTS
     const textRegex = /\.(txt|md|json|yaml|yml|log)$/i
 
-    async function fetchFiles() {
-        try {
-            setLoading(true)
-            const res = await fetch("/api/files?type=text")
+    // 2. SWR HOOK (Auto-polls every 3 seconds)
+    const { data: json, error, isLoading } = useSWR(
+        '/api/files?type=text',
+        fetcher,
+        {
+            refreshInterval: 3000,
+            revalidateOnFocus: true
+        }
+    )
 
-            if (!mountedRef.current) return
+    // 3. EVENT LISTENER
+    // When a text file is uploaded elsewhere, force a refresh
+    useEffect(() => {
+        const handler = () => mutate('/api/files?type=text');
+        if (typeof window !== "undefined") {
+            window.addEventListener("texts-updated", handler)
+            return () => window.removeEventListener("texts-updated", handler)
+        }
+    }, [])
 
-            const contentType = res.headers.get("content-type") || ""
+    // 4. DATA TRANSFORMATION (Filter 24h & Sort)
+    const files = useMemo(() => {
+        if (!json?.files) return []
 
-            if (!contentType.includes("application/json")) {
-                const body = await res.text()
-                const snippet = body?.slice(0, 600) || ""
-                setError(
-                    `Unexpected response type: ${contentType}. Server returned: ${snippet}`
-                )
-                setFiles([])
-                return
-            }
+        const now = Date.now()
+        const dayAgo = now - 24 * 60 * 60 * 1000
+        const rawFiles: FileItem[] = json.files
 
-            const json = await res.json()
-
-            if (!res.ok) {
-                setError(json?.error || "Failed fetching text files")
-                setFiles([])
-                return
-            }
-
-            const now = Date.now()
-            const dayAgo = now - 24 * 60 * 60 * 1000
-
-            const rawFiles: FileItem[] = json?.files || []
-
-            // Filter text files only
-            const filtered = rawFiles.filter((f) => {
-                if (!f.key || !textRegex.test(f.key)) return false
-                if (!f.lastModified) return false
-                const t = new Date(f.lastModified).getTime()
+        return rawFiles
+            .filter((it) => {
+                // Check extension
+                if (!it.key || !textRegex.test(it.key)) return false
+                
+                // Check date
+                if (!it.lastModified) return false
+                const t = new Date(it.lastModified).getTime()
                 return !Number.isNaN(t) && t >= dayAgo
             })
-
-            // Sort newest first
-            filtered.sort((a, b) => {
+            .sort((a, b) => {
+                // Sort Newest First
                 const ta = a.lastModified ? new Date(a.lastModified).getTime() : 0
                 const tb = b.lastModified ? new Date(b.lastModified).getTime() : 0
                 return tb - ta
             })
+    }, [json])
 
-            setFiles(filtered)
-        } catch (err) {
-            if (!mountedRef.current) return
-            setError((err as Error).message)
-            setFiles([])
-        } finally {
-            if (mountedRef.current) setLoading(false)
-        }
-    }
-
-    useEffect(() => {
-        fetchFiles()
-
-        const handler = async (e: Event) => {
-            const detail = (e as CustomEvent)?.detail
-            const key = detail?.key
-
-            // Fetch single updated text file
-            if (key) {
-                try {
-                    const res = await fetch(
-                        `/api/files?key=${encodeURIComponent(key)}&type=text`
-                    )
-                    if (!res.ok) return
-                    const json = await res.json()
-                    const file = (json.files && json.files[0]) || null
-                    if (!file) return
-
-                    if (!textRegex.test(file.key || "")) return
-
-                    const now = Date.now()
-                    const dayAgo = now - 24 * 60 * 60 * 1000
-                    const t = file.lastModified
-                        ? new Date(file.lastModified).getTime()
-                        : 0
-
-                    if (!Number.isNaN(t) && t >= dayAgo) {
-                        setFiles((prev) => {
-                            const existing = (prev || []).filter((p) => p.key !== file.key)
-                            return [file, ...existing]
-                        })
-                    }
-                } catch (err) {
-                    console.warn("Failed updating single text file", err)
-                }
-
-                return
-            }
-
-            // Full refresh if no specific key
-            fetchFiles()
-        }
-
-        if (typeof window !== "undefined") {
-            window.addEventListener("texts-updated", handler as EventListener)
-        }
-
-        return () => {
-            mountedRef.current = false
-            if (typeof window !== "undefined") {
-                window.removeEventListener("texts-updated", handler as EventListener)
-            }
-        }
-    }, [])
-
+    // 5. UI RENDER
     return (
         <div className="bg-[linear-gradient(90deg,rgba(255,255,255,0.25),rgba(255,255,255,0.50),rgba(255,255,255,0.25))] rounded-xl p-4 border border-[#ffffff] h-64 shrink-0 flex flex-col gap-2">
             <p className="text-sm opacity-60">Text Feed</p>
 
             <div className="mt-2 w-full h-full bg-black/60 p-2 rounded-lg border border-[#1E2A3E] text-xs opacity-90 overflow-hidden">
-                {loading && (
-                    <div className="w-full h-full flex items-center justify-center opacity-60">
-                        Loading text…
+                
+                {/* LOADING */}
+                {isLoading && (
+                    <div className="w-full h-full flex items-center justify-center opacity-60 animate-pulse">
+                        Loading text...
                     </div>
                 )}
 
-                {!loading && error && (
+                {/* ERROR */}
+                {error && (
                     <div className="w-full h-full text-center flex items-center justify-center text-red-400">
-                        {error}
+                        Connection Failed
                     </div>
                 )}
 
-                {!loading && !error && files && files.length === 0 && (
+                {/* EMPTY */}
+                {!isLoading && !error && files.length === 0 && (
                     <div className="w-full h-full text-center flex items-center justify-center opacity-40">
                         No recent text files
                     </div>
                 )}
 
-                {!loading && !error && files && files.length > 0 && (
+                {/* DATA GRID */}
+                {!isLoading && !error && files.length > 0 && (
                     <div className="grid grid-cols-2 grid-rows-2 gap-2 h-full">
                         {(() => {
                             const maxVisible = 4
@@ -160,15 +110,20 @@ export default function textData() {
                                 <a
                                     key={f.key}
                                     href={`/text?key=${encodeURIComponent(f.key ?? "")}`}
-                                    className="relative bg-black/50 rounded p-2 flex items-center justify-center border border-[#1E2A3E] hover:bg-black/40 transition"
+                                    className="relative bg-black/50 rounded p-2 flex items-center justify-center border border-[#1E2A3E] hover:bg-black/40 transition group"
                                 >
-                                    <div className="text-center text-xs break-all px-1">
-                                        {f.key}
+                                    {/* Icon & Filename */}
+                                    <div className="text-center px-1 flex flex-col items-center gap-1">
+                                        <span className="material-symbols-outlined text-[16px] text-gray-500 group-hover:text-blue-400">description</span>
+                                        <div className="text-xs break-all line-clamp-2">
+                                            {f.key}
+                                        </div>
                                     </div>
 
+                                    {/* "+X More" Overlay */}
                                     {idx === maxVisible - 1 && extra > 0 && (
-                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                                            <div className="text-white text-lg font-semibold bg-black/40 px-3 py-1 rounded">
+                                        <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px] flex items-center justify-center">
+                                            <div className="text-white text-lg font-semibold bg-black/40 px-3 py-1 rounded border border-white/10">
                                                 +{extra}
                                             </div>
                                         </div>

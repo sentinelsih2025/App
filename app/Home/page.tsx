@@ -10,6 +10,7 @@ import ThreatBarChart from "../components/LineChart";
 import ImageData from "../components/imageData";
 import VideoData from "../components/videoData";
 import TextData from "../components/textData";
+import AudioData from "../components/audioData";
 
 import bgImg from "../../public/bgImg.jpg"
 
@@ -37,6 +38,7 @@ export default function Home() {
         <ImageData />
         <VideoData/>
         <TextData/>
+        <AudioData/>
 
 
 
@@ -152,8 +154,8 @@ export default function Home() {
       <aside
       style={{
         backgroundImage: `url(${bgImg.src})`,
-        backgroundSize: "auto",            // prevents zooming
-        backgroundRepeat: "repeat",        // repeats the pattern
+        backgroundSize: "auto",            
+        backgroundRepeat: "repeat",        
         backgroundPosition: "center",
       }}
       
@@ -168,28 +170,22 @@ export default function Home() {
         <div className="bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))] border border-[#ffffff] rounded-xl p-4">
           <p className="text-sm opacity-60 mb-2">THREAT CONFIDENCE</p>
           <div className="w-full h-2 bg-[#1A2538] rounded-full relative">
-            <div className="absolute left-0 top-0 h-2 bg-lime-400 rounded-full" style={{ width: "72%" }}></div>
+            <div className="absolute left-0 top-0 h-2 bg-lime-400 rounded-full" style={{ width: "48%" }}></div>
           </div>
-          <p className="text-right text-xs mt-1 opacity-70">72%</p>
+          <p className="text-right text-xs mt-1 opacity-70">48%</p>
         </div>
 
-        <Link href='/dashboard' className="block mt-4 py-2 rounded-lg bg-[#1df2ff80] hover:bg-[#00f2ffbf] transition-all shadow text-sm font-medium text-center">OPEN DECISSION SUPPORT</Link>
+        <div className="bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))] border border-[#ffffff] rounded-xl p-4">
+          <p className="text-sm opacity-60 mb-2">AUTHENTIC SCORE</p>
+          <div className="w-full h-2 bg-[#1A2538] rounded-full relative">
+            <div className="absolute left-0 top-0 h-2 bg-lime-400 rounded-full" style={{ width: "92%" }}></div>
+          </div>
+          <p className="text-right text-xs mt-1 opacity-70">92%</p>
+        </div>
+
+        <Link href='/dashboard' className="block mt-4 py-2 rounded-lg bg-[#1df2ff80] hover:bg-[#00f2ffbf] transition-all shadow text-sm font-medium text-center">DECISSION SUPPORT CENTER</Link>
 
 
-        <div className="
-  bg-[#111929] 
-  mt-3 
-  h-55
-  flex 
-  items-center 
-  justify-center
-
-  bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))] border border-[#ffffff] rounded-xl
-">
-  <div className="w-full h-full">
-    <ThreatBarChart />
-  </div>
-</div>
 
 
       </aside>

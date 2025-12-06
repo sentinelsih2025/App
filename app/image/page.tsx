@@ -1,17 +1,18 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
+import useSWR, { mutate } from "swr"; // 1. Import SWR
 
-// --- INTERFACE UPDATES (Optional, but good practice) ---
-// Define the structure for a single item from the S3/File List endpoint (e.g., /api/files)
+// --- INTERFACES ---
+
 interface FileItem {
-  key?: string; // S3 Key (e.g., 'uploads/image-timestamp.jpg')
-  url?: string; // AWS S3 URL
+  key?: string; 
+  url?: string; 
   size?: number | null;
   lastModified?: string | null;
-  // Existing placeholder detection field (might be from another API)
+  // Existing placeholder detection field
   detection?: {
     objectDetection?: string;
     attackers?: number;
@@ -20,7 +21,6 @@ interface FileItem {
   };
 }
 
-// Define the structure for the *content* inside a single dynamic JSON file
 interface VisualData {
   object_detection?: string[];
   number_of_attackers?: number;
@@ -30,190 +30,92 @@ interface VisualData {
 }
 
 interface DynamicFileContent {
-  file_name: string; // Filename from the original JSON (e.g., 'report_1.json')
+  file_name: string;
   file_type: string;
   timestamp: string;
   visual_data?: VisualData;
   summary: string;
 }
 
-// Define the structure for an item returned by the new /image FastAPI endpoint
 interface DynamicFastAPIItem {
-  filename: string; // The full JSON filename (e.g., 'report_1.json')
-  content: DynamicFileContent; // The actual JSON content
+  filename: string;
+  content: DynamicFileContent;
 }
+
+// --- FETCHER FUNCTION ---
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ImageDetail() {
   const searchParams = useSearchParams();
-  const key = searchParams?.get("key") ?? ""; // Note: This key is not directly used in the new flow
 
-  const [itemList, setItemList] = useState<FileItem[]>([]); // Data from /api/files
-  const [loading, setLoading] = useState(false);
+  // ---------------------------------------------------------
+  // 1. DATA FETCHING WITH SWR
+  // ---------------------------------------------------------
 
-  // Maps the S3 Key (from itemList) to the DynamicFileContent (from /image endpoint)
-  const [fastDataMap, setFastDataMap] = useState<Record<string, DynamicFileContent>>({});
-  const [fastLoading, setFastLoading] = useState(false);
+  // A. Fetch S3 File List (Auto-updates on focus)
+  const { 
+    data: s3Data, 
+    isLoading: s3Loading 
+  } = useSWR("/api/files?type=image", fetcher);
+
+  // B. Fetch AI Analysis (POLLING enabled: checks every 3 seconds)
+  const { 
+    data: fastApiData, 
+    isLoading: fastLoading 
+  } = useSWR<DynamicFastAPIItem[]>(
+    "http://localhost:8000/image", 
+    fetcher, 
+    {
+      refreshInterval: 3000, // ⚡️ The Magic: Polls for new AI results
+      revalidateOnFocus: true,
+      dedupingInterval: 1000,
+    }
+  );
+
+  // ---------------------------------------------------------
+  // 2. DATA MERGING (Replaces the complex useEffect)
+  // ---------------------------------------------------------
   
-  // NOTE: 'data' state for a single item is no longer necessary as we fetch an array.
-  // const [data, setData] = useState<SummaryData | null>(null);
+  const mergedItems = useMemo(() => {
+    const files: FileItem[] = s3Data?.files || [];
+    const aiResults: DynamicFastAPIItem[] = fastApiData || [];
 
-  /* ---------------------------------------------------
-      1) LOAD FILE LIST FROM /api/files (S3/Storage)
-      (This populates 'itemList' which has the S3 'key' and 'url')
-  -----------------------------------------------------*/
+    return files.map((file) => {
+      const s3FileBaseName = file.key?.split("/").pop(); // e.g., 'image-123.jpg'
+      
+      // Find matching AI result
+      const match = aiResults.find((item) => {
+        // Match the S3 filename with the filename stored INSIDE the JSON content
+        return item.content.file_name === s3FileBaseName;
+      });
+
+      return {
+        ...file,
+        fastData: match ? match.content : undefined
+      };
+    });
+  }, [s3Data, fastApiData]);
+
+  // ---------------------------------------------------------
+  // 3. EVENT LISTENER (For instant updates after upload)
+  // ---------------------------------------------------------
+  
   useEffect(() => {
-    let mounted = true;
-    const mountedRef = { current: true };
-
-    async function loadList() {
-      try {
-        setLoading(true);
-        // Fetch only images
-        const res = await fetch("/api/files?type=image");
-        const json = await res.json();
-
-        if (!mounted) return;
-
-        const mapped = (json.files || []).map((file: any) => ({
-          ...file,
-          // Existing mapping logic for a file's 'detection' property
-          detection: file.visual_data 
-            ? {
-                objectDetection: file.visual_data.object_detection?.join(", "),
-                attackers: file.visual_data.number_of_attackers,
-                threatPosture: file.visual_data.threat_posture,
-                summary: file.summary,
-              }
-            : null,
-        }));
-
-        setItemList(mapped);
-      } catch (err) {
-        console.error("Error loading file list:", err);
-        if (mounted) setItemList([]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-
-    async function fetchSingleAndPrepend(keyParam: string) {
-      try {
-        const res = await fetch(`/api/files?key=${encodeURIComponent(keyParam)}&type=image`);
-        if (!res.ok) return;
-        const json = await res.json();
-        const file = json.files?.[0] || null;
-        if (!file) return;
-
-        // only prepend if not already present
-        setItemList((prev) => {
-          const without = (prev || []).filter((p) => p.key !== file.key);
-          return [file, ...without];
-        });
-      } catch (err) {
-        console.warn('Failed to fetch single image', err);
-      }
-    }
-
-    loadList();
-
-    // Listen for single-image updates
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent)?.detail;
-      const k = detail?.key;
-      if (k) fetchSingleAndPrepend(k);
-    };
-
+    // When a new file is uploaded, just tell SWR to re-fetch the list immediately
+    const handler = () => mutate("/api/files?type=image");
+    
     if (typeof window !== 'undefined') window.addEventListener('images-updated', handler);
-
     return () => {
-      mounted = false;
-      mountedRef.current = false;
       if (typeof window !== 'undefined') window.removeEventListener('images-updated', handler);
     };
   }, []);
 
-  /* ---------------------------------------------------
-      2) LOAD FastAPI extra metadata (/image)
-      (Fetches *all* JSON summaries and maps them to S3 keys)
-  -----------------------------------------------------*/
-  useEffect(() => {
-    let mounted = true;
+  // ---------------------------------------------------------
+  // 4. UI RENDER
+  // ---------------------------------------------------------
+  
+  const loading = s3Loading; // Primary loading state
 
-    async function fetchAllDynamicData() {
-      // We wait for the file list to load so we can match the data
-      if (!itemList || itemList.length === 0) return;
-
-      try {
-        setFastLoading(true);
-        console.debug("Fetching all dynamic data from /image...");
-        
-        // --- SWITCHED TO THE NEW ENDPOINT ---
-        const res = await fetch("http://localhost:8000/image"); 
-        if (!res.ok) {
-          throw new Error(`FastAPI /image returned status ${res.status}`);
-        }
-
-        // The response is an array of { filename: string, content: DynamicFileContent }
-        const dataArray: DynamicFastAPIItem[] = await res.json();
-        const newMap: Record<string, DynamicFileContent> = {};
-
-        // Iterate over the list of S3 files and try to match them 
-        // with the FastAPI data based on the filename/basename.
-        for (const f of itemList) {
-          const s3FileBaseName = f.key?.split("/").pop(); // e.g., 'image-timestamp.jpg'
-
-          if (!s3FileBaseName) continue;
-
-          // Find the matching data item from the /image response array
-          const fastApiItem = dataArray.find((item) => {
-            const jsonFileName = item.filename; // e.g., 'report_1.json'
-            const contentFileName = item.content.file_name; // e.g., 'image-A.jpg' (as stored in the JSON)
-
-            // The goal is to match the S3 basename (image-timestamp.jpg) 
-            // with the filename stored *inside* the dynamic JSON.
-            return contentFileName === s3FileBaseName;
-          });
-
-          if (fastApiItem) {
-             // Use the S3 Key (f.key) to map the fetched data content
-             newMap[f.key!] = fastApiItem.content;
-          } else {
-             // Fallback for cases where the JSON file_name might be the report filename
-             // (e.g. report_1.json) and we need a different match logic.
-             // This is an area for refinement based on your exact naming conventions.
-             console.debug('FastAPI: no match for S3 key:', s3FileBaseName);
-          }
-        }
-
-        if (mounted) {
-          console.debug("Attached FastAPI data to keys:", Object.keys(newMap));
-          // Update the map with all the successfully matched data
-          setFastDataMap(newMap); 
-        }
-      } catch (err) {
-        console.error("FastAPI /image error:", err);
-      } finally {
-        if (mounted) setFastLoading(false);
-      }
-    }
-
-    fetchAllDynamicData();
-    return () => {
-      mounted = false;
-    };
-  }, [itemList]);
-
-
-  // Helper function to find the fast data for a given S3 key
-  const getFastData = (s3Key?: string): DynamicFileContent | undefined => {
-      if (!s3Key) return undefined;
-      return fastDataMap[s3Key];
-  }
-
-
-  /* ---------------------------------------------------
-      UI RENDER
-  -----------------------------------------------------*/
   return (
     <div className="p-6 w-full -mt-[70px] bg-[#05080F] min-h-screen text-[#D8DFEA]">
       {/* BACK BUTTON */}
@@ -227,25 +129,26 @@ export default function ImageDetail() {
         Image Data Source
       </h2>
 
-      {(loading || fastLoading) && (
-        <div className="text-sm opacity-70 animate-pulse">
-          {loading ? "Loading images list..." : "Loading dynamic summaries..."}
-        </div>
-      )}
+      {/* STATUS INDICATORS */}
+      <div className="flex gap-4 mb-4 text-xs opacity-70">
+        {loading && <div className="animate-pulse text-blue-400">Loading S3 Files...</div>}
+        {fastLoading && !loading && <div className="animate-pulse text-green-400">Syncing AI Data...</div>}
+      </div>
 
       <div className="grid grid-cols-1 gap-8">
-        {itemList.length > 0 ? (
-          itemList.map((f) => {
-            // Retrieve the data from the map using the S3 file key
-            const fast = getFastData(f.key); 
-            
-            // Use existing detection data or the new FastAPI data
+        {mergedItems.length > 0 ? (
+          mergedItems.map((f) => {
+            const fast = f.fastData;
+
+            // Resolve Summary and Visuals
             const summary =
               f.detection?.summary ||
               fast?.summary ||
-              "No summary available";
+              "Processing..."; // Changed default to Processing to indicate work in progress
 
             const visual = fast?.visual_data;
+            
+            // Prioritize AI timestamp, then S3 modified time
             const timestamp =
               fast?.timestamp ||
               f.lastModified ||
@@ -265,18 +168,23 @@ export default function ImageDetail() {
                     flex flex-col md:flex-row items-start gap-6
                   "
                 >
-                  {/* IMAGE - **Ensure f.url is a correct AWS URL for this to work** */}
+                  {/* IMAGE */}
                   <div
                     className="
                       w-full md:w-1/3 h-56 rounded-lg overflow-hidden 
                       shadow-inner border border-[#1C2F4A] bg-black/40
                     "
                   >
-                    <img
-                      src={f.url}
-                      alt={String(f.key)}
-                      className="w-full h-full object-cover hover:scale-105 transition"
-                    />
+                    {f.url ? (
+                      <img
+                        src={f.url}
+                        alt={String(f.key)}
+                        className="w-full h-full object-cover hover:scale-105 transition"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-500">No Image URL</div>
+                    )}
                   </div>
                 
                   {/* DATA DISPLAY */}
@@ -285,9 +193,9 @@ export default function ImageDetail() {
                       <div>
                         <h4 className="text-xs font-semibold text-[#9FD7FF]">File Details (from FastAPI)</h4>
                         <div className="mt-2 text-xs space-y-1">
-                          <div><strong>File Name:</strong> {fast.file_name ?? f.key?.split("/").pop() ?? "-"}</div>
-                          <div><strong>File Type:</strong> {fast.file_type ?? "-"}</div>
-                          <div><strong>Timestamp:</strong> {new Date(fast.timestamp ?? timestamp ?? "").toLocaleString() ?? "-"}</div>
+                          <div><strong>File Name:</strong> {fast.file_name}</div>
+                          <div><strong>File Type:</strong> {fast.file_type}</div>
+                          <div><strong>Timestamp:</strong> {timestamp ? new Date(timestamp).toLocaleString() : "-"}</div>
                         </div>
                       </div>
 
@@ -304,18 +212,24 @@ export default function ImageDetail() {
 
                       <div>
                         <h4 className="text-xs font-semibold text-[#9FD7FF]">Summary</h4>
-                        <p className="mt-1 text-xs opacity-80">{fast.summary ?? summary}</p>
+                        <p className="mt-1 text-xs opacity-80">{summary}</p>
                       </div>
                     </div>
                   ) : (
-                    // Fallback if no specific dynamic data was found for this S3 item
-                    <div className="mt-2 text-sm text-[#7A8C9E] md:w-2/3">
-                      <div className="text-red-400"><strong>No Dynamic Data Found for this Image ({f.key?.split("/").pop()})</strong></div>
-                      <p className="mt-1 text-xs opacity-80">Fallback Summary: {summary}</p>
+                    // Fallback / Loading State for individual item
+                    <div className="mt-2 text-sm text-[#7A8C9E] md:w-2/3 flex flex-col justify-center h-full">
+                      <div className="text-amber-400 font-semibold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm animate-spin">sync</span>
+                        Analyzing Content...
+                      </div>
+                      <p className="mt-2 text-xs opacity-60">
+                        The AI agent is currently processing this image. Results will appear automatically in a few seconds.
+                      </p>
+                      <div className="mt-4 pt-4 border-t border-gray-800">
+                         <p className="text-xs text-gray-500">Filename: {f.key?.split("/").pop()}</p>
+                      </div>
                     </div>
                   )}
-
-
                 </div>
 
                 {/* Divider */}
@@ -324,7 +238,10 @@ export default function ImageDetail() {
             );
           })
         ) : (
-          <div className="text-xs opacity-60">No uploaded images yet.</div>
+          <div className="text-center py-20 opacity-60">
+             <span className="material-symbols-outlined text-4xl mb-2">image_search</span>
+             <p>No uploaded images found.</p>
+          </div>
         )}
       </div>
     </div>

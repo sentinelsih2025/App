@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+"use client";
+
+import useSWR from "swr";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 
+// --- INTERFACES ---
 interface VisualData {
     object_detection?: string[];
     threat_posture?: string;
@@ -9,64 +12,44 @@ interface VisualData {
     weather?: string;
 }
 
-interface SummaryData {
-    file_name: string;
-    file_type: string;
-    timestamp: string;
-    visual_data?: VisualData;
-    detailed_summary: string;
-}
+// --- FETCHER ---
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function AudioAgent() {
-    const [data, setData] = useState<SummaryData | null>(null);
-    const [loading, setLoading] = useState(true);
+    // 1. SWR Hook for Auto-Polling
+    const { data: json, isLoading } = useSWR("http://localhost:8000/audiodata", fetcher, {
+        refreshInterval: 3000, // Polls every 3 seconds
+        revalidateOnFocus: true,
+    });
 
-    useEffect(() => {
-        fetch("http://localhost:8000/audiodata")
-            .then((res) => res.json())
-            .then((json) => {
+    // 2. Derive State (Get the latest incident)
+    const firstIncident = json?.incidents?.[0];
 
-                if (json.incidents && json.incidents.length > 0) {
-                    const first = json.incidents[0];
+    // 3. Loading / Empty States (Styled to match your theme)
+    if (isLoading) return <p className="text-[#b8d8ff] text-xs opacity-60 animate-pulse">Listening for Audio Events...</p>;
+    if (!firstIncident) return <p className="text-[#b8d8ff] text-xs opacity-60">No audio threats detected</p>;
 
-                    const mapped: SummaryData = {
-                        file_name: first.file_name,
-                        file_type: "image",
-                        timestamp: first.timestamp,
-                        visual_data: {
-                            object_detection: first.key_findings || [],
-                            threat_posture: first.threat_level || "Unknown"
-                        },
-                        detailed_summary: first.detailed_summary
-                    };
+    // 4. Map Data
+    const timestamp = firstIncident.timestamp;
+    const detailed_summary = firstIncident.detailed_summary;
 
-                    setData(mapped);
-                } else {
-                    setData(null);
-                }
+    const visual_data: VisualData = {
+        object_detection: firstIncident.key_findings || [],
+        threat_posture: firstIncident.threat_level || "Unknown"
+    };
 
-                setLoading(false);
-            })
-            .catch(() => setLoading(false));
-    }, []);
-
-    if (loading) return <p>Loading...</p>;
-    if (!data) return <p>No data found</p>;
-
-    const { timestamp, visual_data, detailed_summary } = data;
-
+    // 5. Render UI
     return (
         <div>
             <div className="flex items-start gap-4 justify-center">
-                   <div className="
-    flex-1 relative 
-    bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))]
-    border border-[#1df2ff80] 
-    rounded-xl 
-    p-4 
-    overflow-hidden
-">
-
+                <div className="
+                    flex-1 relative 
+                    bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))]
+                    border border-[#1df2ff80] 
+                    rounded-xl 
+                    p-4 
+                    overflow-hidden
+                ">
 
                     <div className="absolute left-0 top-0 h-full w-1 bg-[#00ebf780] rounded-l-xl"></div>
 
@@ -96,8 +79,10 @@ export default function AudioAgent() {
 
                     {visual_data && (
                         <div className="text-[#e6faff]">
+                            {/* Note: Keeping label 'Object Detection' to match your interface, 
+                                though for audio this usually represents 'Detected Sounds' */}
                             <p>
-                                <strong className="text-[#1df2ff80]">Object Detection:</strong>{" "}
+                                <strong className="text-[#1df2ff80]">Sound Detection:</strong>{" "}
                                 {visual_data.object_detection?.join(", ") || "N/A"}
                             </p>
                             <p>
@@ -107,12 +92,12 @@ export default function AudioAgent() {
                         </div>
                     )}
 
-                    <p className="text-[#e6faff] mt-2">
+                    <div className="text-[#e6faff] mt-2">
                         <strong className="text-[#1df2ff80]">Summary: </strong>
-                         <span className="text-[#e6faff] prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>{detailed_summary}</ReactMarkdown>
-                    </span>
-                    </p>
+                        <div className="text-[#e6faff] prose prose-invert prose-sm max-w-none inline">
+                            <ReactMarkdown>{detailed_summary}</ReactMarkdown>
+                        </div>
+                    </div>
 
                     <div className="flex items-end justify-end mt-3">
                         <button className="
