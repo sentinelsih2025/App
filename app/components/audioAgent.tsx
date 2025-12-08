@@ -24,86 +24,68 @@ const useTypewriter = (text: string, speed: number = 20) => {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// --- THEME HELPER (Consistent with ImageAgent) ---
+// --- THEME HELPER ---
 const getTheme = (level: string) => {
     const normalizedLevel = level?.toLowerCase() || "";
-    
     if (normalizedLevel.includes("high") || normalizedLevel.includes("critical")) {
-        return {
-            color: "text-red-500",
-            border: "border-red-500/50",
-            bg: "bg-red-500/10",
-            glow: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
-            bar: "bg-red-500",
-            button: "hover:bg-red-500/20 border-red-500/40 text-red-500",
-            status: "CRITICAL"
-        };
+        return { color: "text-red-500", border: "border-red-500/50", bg: "bg-red-500/10", glow: "shadow-[0_0_15px_rgba(239,68,68,0.15)]", bar: "bg-red-500", button: "hover:bg-red-500/20 border-red-500/40 text-red-500", status: "CRITICAL" };
     } else if (normalizedLevel.includes("medium") || normalizedLevel.includes("moderate")) {
-        return {
-            color: "text-amber-400",
-            border: "border-amber-400/50",
-            bg: "bg-amber-400/10",
-            glow: "shadow-[0_0_15px_rgba(251,191,36,0.15)]",
-            bar: "bg-amber-400",
-            button: "hover:bg-amber-400/20 border-amber-400/40 text-amber-400",
-            status: "WARNING"
-        };
+        return { color: "text-amber-400", border: "border-amber-400/50", bg: "bg-amber-400/10", glow: "shadow-[0_0_15px_rgba(251,191,36,0.15)]", bar: "bg-amber-400", button: "hover:bg-amber-400/20 border-amber-400/40 text-amber-400", status: "WARNING" };
     } else {
-        // Default / Low / Safe -> Neon Green
-        return {
-            color: "text-[#00ffa2]",
-            border: "border-[#00ffa2]/50",
-            bg: "bg-[#00ffa2]/10",
-            glow: "shadow-[0_0_15px_rgba(0,255,162,0.15)]",
-            bar: "bg-[#00ffa2]",
-            button: "hover:bg-[#00ffa2]/20 border-[#00ffa2]/40 text-[#00ffa2]",
-            status: "LISTENING"
-        };
+        return { color: "text-[#00ffa2]", border: "border-[#00ffa2]/50", bg: "bg-[#00ffa2]/10", glow: "shadow-[0_0_15px_rgba(0,255,162,0.15)]", bar: "bg-[#00ffa2]", button: "hover:bg-[#00ffa2]/20 border-[#00ffa2]/40 text-[#00ffa2]", status: "LISTENING" };
     }
 };
 
-export default function AudioAgent() {
-  // 1. Fetch Audio Data
+export default function AudioAgent({ uploadTime = 0 }: { uploadTime?: number }) {
+  // 1. HOOK: useSWR (Always first)
   const { data: json, isLoading } = useSWR("http://localhost:8000/audiodata", fetcher, {
-    refreshInterval: 3000, 
+    refreshInterval: 2000, 
     revalidateOnFocus: true,
   });
 
-  // 2. Prepare Data
   const analysis = json?.analysis;
+  
+  // 2. PREPARE DATA FOR TYPEWRITER (Must happen before any return)
+  // We provide a fallback string so the hook always has something to process
   const rawSummary = analysis?.overall_situation || "Initializing acoustic sensors. No audio events processed.";
+  
+  // 3. HOOK: useTypewriter (MOVED UP - FIXED)
+  // This must be called unconditionally before any returns
   const animatedSummary = useTypewriter(rawSummary, 15);
-  const relatedIncidents = analysis?.related_incidents || null;
 
-  // --- LOADING STATE ---
+  // 4. LOGIC
+  const reportTime = json?.generated_at ? new Date(json.generated_at).getTime() : 0;
+  const isProcessing = uploadTime > 0 && reportTime < uploadTime;
+
+  // --- CONDITIONAL RETURN 1: LOADING ---
   if (isLoading) return <div className="text-[#00ffa2]/70 text-xs animate-pulse p-4 font-mono">Calibrating Audio Sensors...</div>;
 
-  // --- WAITING STATE ---
-  if (!analysis) {
+  // --- CONDITIONAL RETURN 2: WAITING / PROCESSING ---
+  if (!analysis || isProcessing) {
     return (
       <div className="flex items-center justify-center p-4 border border-[#00ffa2]/30 rounded-xl bg-[#000510]">
         <div className="flex flex-col items-center gap-2">
-            {/* Audio Wave Animation (Updated Color) */}
+            {/* Audio Wave Animation */}
             <div className="flex gap-1 h-3 items-center">
               <span className="w-1 h-full bg-[#00ffa2] animate-[pulse_1s_ease-in-out_infinite]"></span>
               <span className="w-1 h-2/3 bg-[#00ffa2] animate-[pulse_1.2s_ease-in-out_infinite]"></span>
               <span className="w-1 h-full bg-[#00ffa2] animate-[pulse_0.8s_ease-in-out_infinite]"></span>
             </div>
-            <p className="text-[#00ffa2] text-xs tracking-widest uppercase opacity-70 font-mono">
-                Awaiting Audio Intel...
+            <p className="text-[#00ffa2] text-xs tracking-widest uppercase opacity-70 font-mono animate-pulse">
+                {isProcessing ? "Analyzing Audio..." : "Awaiting Audio Intel..."}
             </p>
         </div>
       </div>
     );
   }
 
-  // 3. Extract Specifics
+  // --- SUCCESS STATE PREPARATION ---
+  // (Variables only needed for success view)
+  const relatedIncidents = analysis?.related_incidents || null;
   const threatLevel = analysis.threat_assessment?.level || "Unknown";
   const concerns = analysis.threat_assessment?.concerns || "None";
   const timestamp = json.generated_at || new Date().toISOString();
   const briefFindings = analysis.individual_summaries || [];
-
-  // 4. Get Dynamic Theme
   const theme = getTheme(threatLevel);
 
   return (
@@ -120,10 +102,8 @@ export default function AudioAgent() {
           transition-colors duration-500
         `}>
 
-          {/* Status Bar on Left */}
           <div className={`absolute left-0 top-0 h-full w-1 ${theme.bar} rounded-l-xl shadow-[0_0_10px_currentColor]`}></div>
 
-          {/* HEADER */}
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] opacity-60 text-gray-300 font-mono">
               {new Date(timestamp).toLocaleTimeString()}
@@ -139,7 +119,6 @@ export default function AudioAgent() {
             </div>
           </div>
 
-          {/* METRICS ROW */}
           <div className="flex justify-between items-start mb-3 bg-[#00000040] p-3 rounded border border-white/5">
              <div>
                 <p className={`text-[10px] uppercase tracking-wider font-semibold opacity-80 ${theme.color}`}>Threat Level</p>
@@ -155,7 +134,6 @@ export default function AudioAgent() {
              </div>
           </div>
 
-          {/* MAIN TYPEWRITER SUMMARY */}
           <div className="mb-3">
             <strong className={`text-xs uppercase block mb-1 tracking-wide opacity-80 ${theme.color}`}>Signal Analysis: </strong>
             <div className="text-gray-200 text-xs font-mono leading-relaxed bg-[#00000040] p-3 rounded border-l-2 border-white/10 min-h-[3rem]">
@@ -166,7 +144,6 @@ export default function AudioAgent() {
             </div>
           </div>
 
-          {/* RELATED INCIDENTS (Warning Box) */}
           {relatedIncidents && (
             <div className={`mb-3 p-2 border-l-2 bg-opacity-10 rounded-r ${theme.border} ${theme.bg}`}>
               <strong className={`text-[10px] uppercase block mb-1 tracking-wider flex items-center gap-1 ${theme.color}`}>
@@ -178,7 +155,6 @@ export default function AudioAgent() {
             </div>
           )}
 
-          {/* BRIEF FINDINGS LIST */}
           {briefFindings.length > 0 && (
              <div className="mb-2">
                 <strong className={`text-xs uppercase block mb-1 tracking-wide opacity-80 ${theme.color}`}>Detected Sounds:</strong>
@@ -193,7 +169,6 @@ export default function AudioAgent() {
              </div>
           )}
 
-          {/* ACTION BUTTON */}
           <div className="flex items-end justify-end mt-4">
             <Link href="/audio">
                 <button className={`bg-transparent text-[10px] uppercase tracking-wider py-1.5 px-4 rounded border transition-all hover:scale-105 active:scale-95 font-semibold ${theme.button}`}>
