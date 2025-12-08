@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
 
 // --- INTERFACE UPDATES (Optional, but good practice) ---
 // Define the structure for a single item from the S3/File List endpoint (e.g., /api/files)
@@ -297,21 +298,28 @@ export default function VideoDetails() {
                           <div><strong>Object Detection:</strong> {visual?.object_detection?.join(', ') ?? 'N/A'}</div>
                           <div><strong>Number of Attackers:</strong> {visual?.number_of_attackers ?? 'N/A'}</div>
                           <div><strong>Threat Posture:</strong> {visual?.threat_posture ?? 'N/A'}</div>
-                          <div><strong>Environment Clues:</strong> {visual?.environment_clues ? visual.environment_clues.join(' | ') : 'N/A'}</div>
+                          
                           <div><strong>Weather:</strong> {visual?.weather ?? 'N/A'}</div>
                         </div>
                       </div>
 
-                      <div>
-                        <h4 className="text-xs font-semibold text-[#9FD7FF]">Summary</h4>
-                        <p className="mt-1 text-xs opacity-80">{fast.summary ?? summary}</p>
-                      </div>
+                     <div>
+  <h4 className="text-xs font-semibold text-[#9FD7FF]">Summary</h4>
+  
+  {/* UPDATED: Use ReactMarkdown with prose classes for proper formatting */}
+  <div className="mt-1 text-xs text-[#e6faff] prose prose-invert prose-xs max-w-none leading-relaxed">
+    <ReactMarkdown>
+      {fast.summary ?? summary}
+    </ReactMarkdown>
+  </div>
+</div>
                     </div>
                   ) : (
                     // Fallback if no specific dynamic data was found for this S3 item
                     <div className="mt-2 text-sm text-[#7A8C9E] md:w-2/3">
                       <div className="text-red-400"><strong>No Dynamic Data Found for this Image ({f.key?.split("/").pop()})</strong></div>
-                      <p className="mt-1 text-xs opacity-80">Fallback Summary: {summary}</p>
+                      <p className="mt-1 text-xs opacity-80">Fallback Summary: {
+summary}</p>
                     </div>
                   )}
 

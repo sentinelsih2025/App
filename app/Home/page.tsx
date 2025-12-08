@@ -17,6 +17,8 @@ import AudioData from "../components/audioData";
 
 import bgImg from "../../public/bgImg.jpg"
 
+import Aggrigator from "../components/aggregator";
+
 
 
 export default function Home() {
@@ -169,34 +171,7 @@ export default function Home() {
         className="w-80 border-l border-[#1E2A3E] p-4 flex flex-col gap-4">
         <h2 className="text-xl font-semibold tracking-wide ">INTELLIGENCE SUMMARY</h2>
 
-        <div className="bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))] border border-[#ffffff] rounded-xl p-4 h-32">
-          <p className="text-sm opacity-60">SITUATION ANALYSIS</p>
-          <p className="text-xs mt-2 opacity-40">Waiting for aggregator analysis...</p>
-        </div>
-
-        <div className="bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))] border border-[#ffffff] rounded-xl p-4">
-          <p className="text-sm opacity-60 mb-2">THREAT CONFIDENCE</p>
-          <div className="w-full h-2 bg-[#1A2538] rounded-full relative">
-            <div className="absolute left-0 top-0 h-2 bg-lime-400 rounded-full" style={{ width: "48%" }}></div>
-          </div>
-          <p className="text-right text-xs mt-1 opacity-70">48%</p>
-        </div>
-
-        <div className="bg-[linear-gradient(90deg,rgba(255,255,255,0.12),rgba(255,255,255,0.35),rgba(255,255,255,0.12))] border border-[#ffffff] rounded-xl p-4">
-          <p className="text-sm opacity-60 mb-2">AUTHENTIC SCORE</p>
-          <div className="w-full h-2 bg-[#1A2538] rounded-full relative">
-            <div className="absolute left-0 top-0 h-2 bg-lime-400 rounded-full" style={{ width: "92%" }}></div>
-          </div>
-          <p className="text-right text-xs mt-1 opacity-70">92%</p>
-        </div>
-
-        <div className="mt-6 w-full bg-slate-900/50 border-y border-cyan-500/30 py-3 text-center backdrop-blur-sm">
-          <span className="text-xs font-bold tracking-[0.3em] text-cyan-400 uppercase font-mono drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]">
-            Decision Support Center
-          </span>
-        </div>
-
-        <Link href='/dashboard' className="block mt-4 py-2 rounded-lg bg-[#00ffa2] hover:bg-[#00f2ffbf] transition-all shadow text-black text-sm font-medium text-center">Chart And Summury</Link>
+        <Aggrigator/>
 
 
 

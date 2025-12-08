@@ -5,76 +5,70 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useState, useEffect } from "react";
 
-// --- INTERFACES ---
-interface VisualData {
-  object_detection?: string[];
-  threat_posture?: string;
-  environment_clues?: string[];
-  weather?: string;
-}
-
-// --- CUSTOM HOOK: Typewriter Effect ---
-// This handles the progressive revealing of text
+// --- CUSTOM HOOK ---
 const useTypewriter = (text: string, speed: number = 20) => {
   const [displayedText, setDisplayedText] = useState("");
-
   useEffect(() => {
-    // If text is empty or undefined, reset
-    if (!text) {
-      setDisplayedText("");
-      return;
-    }
-
-    setDisplayedText(""); // Reset display when source text changes
+    if (!text) { setDisplayedText(""); return; }
+    setDisplayedText(""); 
     let i = 0;
-    
     const intervalId = setInterval(() => {
-      // Use slice to ensure we get the exact substring up to current index
-      // This is safer than appending chars in React state
       setDisplayedText(text.slice(0, i + 1));
       i++;
-
-      if (i >= text.length) {
-        clearInterval(intervalId);
-      }
+      if (i >= text.length) clearInterval(intervalId);
     }, speed);
-
     return () => clearInterval(intervalId);
   }, [text, speed]);
-
   return displayedText;
 };
 
-// --- FETCHER ---
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function ImageAgent() {
-  // 1. SWR Hook
+  // HOOK 1: useSWR (Always called first)
   const { data: json, isLoading } = useSWR("http://localhost:8000/imagedata", fetcher, {
     refreshInterval: 3000,
     revalidateOnFocus: true,
   });
 
-  const firstIncident = json?.incidents?.[0];
-
-  // 2. Prepare the text for the Typewriter
-  // We use the raw text from the API here
-  const rawSummary = firstIncident?.detailed_summary || "";
+  // PREPARE DATA FOR HOOK 2
+  // We calculate these defaults continuously so the hook always has something to run with
+  const analysis = json?.analysis;
+  const rawSummary = analysis?.overall_situation || "";
   
-  // 3. Apply the Typewriter Hook
-  // This variable 'animatedSummary' will grow character by character
-  const animatedSummary = useTypewriter(rawSummary, 15); // 15ms speed (Adjust as needed)
+  // HOOK 2: useTypewriter (Moved UP, before any return statements)
+  // If loading, rawSummary is "", so it types nothing. When data arrives, it starts typing.
+  const animatedSummary = useTypewriter(rawSummary, 15);
 
-  // 4. Loading / Empty States
-  if (isLoading) return <p className="text-[#b8d8ff] text-xs opacity-60 animate-pulse">Loading Intelligence...</p>;
-  if (!firstIncident) return null;
+  // --- NOW WE CAN DO CONDITIONAL RETURNS ---
 
-  const timestamp = firstIncident.timestamp;
-  
-  const visual_data: VisualData = {
-    object_detection: firstIncident.key_findings || [],
-    threat_posture: firstIncident.threat_level || "Unknown",
-  };
+  // 1. Loading State
+  if (isLoading) return <div className="text-[#b8d8ff] text-xs animate-pulse p-4">Initializing Image Intel...</div>;
+
+  // 2. Empty/Waiting State
+  if (!analysis) {
+    return (
+      <div className="flex items-center justify-center p-4 border border-[#1df2ff30] rounded-xl bg-[#000510]">
+        <div className="flex flex-col items-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-sky-500"></span>
+            </span>
+            <p className="text-[#1df2ff] text-xs tracking-widest uppercase opacity-70">
+                Awaiting Analysis...
+            </p>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Success State
+  const threatLevel = analysis.threat_assessment?.level || "Unknown";
+  const concerns = analysis.threat_assessment?.concerns || "None";
+  const timestamp = json.generated_at || new Date().toISOString();
+
+  // Helper for visual data (if you have object detection lists etc)
+  const objectDetection = analysis.individual_summaries?.[0]?.summary || "No objects detected";
 
   return (
     <div>
@@ -87,7 +81,6 @@ export default function ImageAgent() {
           p-4 
           overflow-hidden
         ">
-
           <div className="absolute left-0 top-0 h-full w-1 bg-[#00ebf780] rounded-l-xl"></div>
 
           <div className="flex items-center justify-between mb-2">
@@ -99,41 +92,29 @@ export default function ImageAgent() {
               <h3 className="text-sm font-semibold text-[#1df2ff80] tracking-wide">
                 IMAGE INTELLIGENCE
               </h3>
-
-              <span className="
-                text-[10px] 
-                px-2 py-px 
-                rounded-full 
-                bg-[#1df2ff20] 
-                text-[#1df2ff] 
-                tracking-wide
-                border border-[#1df2ff50]
-              ">
+              <span className="text-[10px] px-2 py-px rounded-full bg-[#1df2ff20] text-[#1df2ff] border border-[#1df2ff50]">
                 Active
               </span>
             </div>
           </div>
 
-          {visual_data && (
-            <div className="text-[#e6faff]">
-              <p>
-                <strong className="text-[#1df2ff80]">Object Detection:</strong>{" "}
-                {visual_data.object_detection?.join(", ") || "N/A"}
-              </p>
-              <p>
-                <strong className="text-[#1df2ff80]">Threat Posture:</strong>{" "}
-                {visual_data.threat_posture ?? "N/A"}
-              </p>
-            </div>
-          )}
+          <div className="text-[#e6faff]">
+            <p>
+              <strong className="text-[#1df2ff80]">Threat Level:</strong>{" "}
+              <span className={threatLevel === "High" ? "text-red-400 font-bold" : "text-[#1df2ff]"}>
+                {threatLevel}
+              </span>
+            </p>
+            <p>
+              <strong className="text-[#1df2ff80]">Key Concerns:</strong>{" "}
+              {concerns}
+            </p>
+          </div>
 
           <div className="text-[#e6faff] mt-2">
-            <strong className="text-[#1df2ff80]">Summary: </strong>
+            <strong className="text-[#1df2ff80]">Situation Report: </strong>
             <div className="text-[#e6faff] prose prose-invert prose-sm max-w-none inline leading-relaxed">
-              {/* Pass the animated text to ReactMarkdown */}
               <ReactMarkdown>{animatedSummary}</ReactMarkdown>
-              
-              {/* Optional: Blinking Cursor Effect */}
               {animatedSummary.length < rawSummary.length && (
                  <span className="inline-block w-2 h-4 bg-[#1df2ff] ml-1 animate-pulse align-middle"/>
               )}
@@ -141,16 +122,8 @@ export default function ImageAgent() {
           </div>
 
           <div className="flex items-end justify-end mt-3">
-            <button className="
-              bg-[#1df2ff30] 
-              py-1 px-3 
-              rounded-3xl 
-              text-[#1df2ff] 
-              border border-[#1df2ff70]
-              hover:bg-[#1df2ff50]
-              transition
-            ">
-              <Link href="/image">View Details</Link>
+            <button className="bg-[#1df2ff30] py-1 px-3 rounded-3xl text-[#1df2ff] border border-[#1df2ff70] hover:bg-[#1df2ff50] transition">
+              <Link href="/image">View Full Report</Link>
             </button>
           </div>
 

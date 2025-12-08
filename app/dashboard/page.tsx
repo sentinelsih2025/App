@@ -1,24 +1,23 @@
 "use client";
-
-import Chart from "../components/chart";
-import Map from "../components/Map";
-
+import Chart from '../components/chart'
+import ActionPlan from '../components/actionPlan'
 export default function Dashboard() {
   return (
-    <div className="flex w-screen">
 
-      {/* CHART */}
-      <div className="w-[50vw]">
+    
+    <div className='flex'>
+      <div>
+        <ActionPlan/>
+      </div>
+      <div>
         <Chart />
       </div>
 
-      {/* MAP */}
-      <main className="w-[50vw]">
-        <div className="h-[45vh] w-full relative">
-          {/* <Map /> */}
-        </div>
-      </main>
-
+      {/* right section */}
+      <div className='bg-amber-500 h-[45vh] w-[50vw]'>
+          {/* Map */}
+          <div>Map</div>
+      </div>
     </div>
   );
 }

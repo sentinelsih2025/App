@@ -5,39 +5,20 @@ import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import { useState, useEffect } from "react";
 
-// --- INTERFACES ---
-interface VisualData {
-  object_detection?: string[];
-  threat_posture?: string;
-  environment_clues?: string[];
-  weather?: string;
-}
-
-// --- CUSTOM HOOK: Typewriter Effect ---
+// --- CUSTOM HOOK (Safe to keep here) ---
 const useTypewriter = (text: string, speed: number = 20) => {
   const [displayedText, setDisplayedText] = useState("");
-
   useEffect(() => {
-    if (!text) {
-      setDisplayedText("");
-      return;
-    }
-
-    setDisplayedText(""); // Reset display when source text changes
+    if (!text) { setDisplayedText(""); return; }
+    setDisplayedText(""); 
     let i = 0;
-    
     const intervalId = setInterval(() => {
       setDisplayedText(text.slice(0, i + 1));
       i++;
-
-      if (i >= text.length) {
-        clearInterval(intervalId);
-      }
+      if (i >= text.length) clearInterval(intervalId);
     }, speed);
-
     return () => clearInterval(intervalId);
   }, [text, speed]);
-
   return displayedText;
 };
 
@@ -45,32 +26,47 @@ const useTypewriter = (text: string, speed: number = 20) => {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function AudioAgent() {
-  // 1. SWR Hook for Auto-Polling
+  // 1. HOOK: SWR (Always first)
   const { data: json, isLoading } = useSWR("http://localhost:8000/audiodata", fetcher, {
     refreshInterval: 3000, 
     revalidateOnFocus: true,
   });
 
-  // 2. Derive State
-  const firstIncident = json?.incidents?.[0];
+  // 2. PREPARE DATA (Extracting correctly from 'analysis')
+  const analysis = json?.analysis;
+  const rawSummary = analysis?.overall_situation || "";
+  
+  // 3. HOOK: Typewriter (Called before any returns)
+  const animatedSummary = useTypewriter(rawSummary, 15);
 
-  // 3. Prepare Text for Animation
-  const rawSummary = firstIncident?.detailed_summary || "";
-  const animatedSummary = useTypewriter(rawSummary, 15); // 15ms speed
+  // 4. LOADING STATE
+  if (isLoading) return <div className="text-[#b8d8ff] text-xs animate-pulse p-4">Listening for Audio Events...</div>;
 
-  // 4. Loading / Empty States
-  if (isLoading) return <p className="text-[#b8d8ff] text-xs opacity-60 animate-pulse">Listening for Audio Events...</p>;
-  if (!firstIncident) return null;
+  // 5. WAITING STATE (Instead of returning null)
+  if (!analysis) {
+    return (
+      <div className="flex items-center justify-center p-4 border border-[#1df2ff30] rounded-xl bg-[#000510]">
+        <div className="flex flex-col items-center gap-2">
+            {/* Audio Wave Animation */}
+            <div className="flex gap-1 h-3 items-center">
+              <span className="w-1 h-full bg-sky-500 animate-[pulse_1s_ease-in-out_infinite]"></span>
+              <span className="w-1 h-2/3 bg-sky-500 animate-[pulse_1.2s_ease-in-out_infinite]"></span>
+              <span className="w-1 h-full bg-sky-500 animate-[pulse_0.8s_ease-in-out_infinite]"></span>
+            </div>
+            <p className="text-[#1df2ff] text-xs tracking-widest uppercase opacity-70">
+                Awaiting Audio Intel...
+            </p>
+        </div>
+      </div>
+    );
+  }
 
-  // 5. Map Data
-  const timestamp = firstIncident.timestamp;
+  // 6. SUCCESS STATE (Map the data)
+  const threatLevel = analysis.threat_assessment?.level || "Unknown";
+  const timestamp = json.generated_at || new Date().toISOString();
+  // Try to find detected sounds from the summary or individual files if available
+  const soundDetection = analysis.individual_summaries?.[0]?.summary || "Analysis Complete";
 
-  const visual_data: VisualData = {
-    object_detection: firstIncident.key_findings || [],
-    threat_posture: firstIncident.threat_level || "Unknown"
-  };
-
-  // 6. Render UI
   return (
     <div>
       <div className="flex items-start gap-4 justify-center">
@@ -94,40 +90,29 @@ export default function AudioAgent() {
               <h3 className="text-sm font-semibold text-[#1df2ff80] tracking-wide">
                 AUDIO INTELLIGENCE
               </h3>
-
-              <span className="
-                text-[10px] 
-                px-2 py-px 
-                rounded-full 
-                bg-[#1df2ff20] 
-                text-[#1df2ff] 
-                tracking-wide
-                border border-[#1df2ff50]
-              ">
+              <span className="text-[10px] px-2 py-px rounded-full bg-[#1df2ff20] text-[#1df2ff] border border-[#1df2ff50]">
                 Active
               </span>
             </div>
           </div>
 
-          {visual_data && (
-            <div className="text-[#e6faff]">
-              <p>
-                <strong className="text-[#1df2ff80]">Sound Detection:</strong>{" "}
-                {visual_data.object_detection?.join(", ") || "N/A"}
-              </p>
-              <p>
-                <strong className="text-[#1df2ff80]">Threat Posture:</strong>{" "}
-                {visual_data.threat_posture ?? "N/A"}
-              </p>
-            </div>
-          )}
+          <div className="text-[#e6faff]">
+            <p>
+              <strong className="text-[#1df2ff80]">Threat Level:</strong>{" "}
+              <span className={threatLevel === "High" ? "text-red-400 font-bold" : "text-[#1df2ff]"}>
+                {threatLevel}
+              </span>
+            </p>
+            <p>
+              <strong className="text-[#1df2ff80]">Acoustic Analysis:</strong>{" "}
+              {soundDetection}
+            </p>
+          </div>
 
           <div className="text-[#e6faff] mt-2">
             <strong className="text-[#1df2ff80]">Summary: </strong>
             <div className="text-[#e6faff] prose prose-invert prose-sm max-w-none inline leading-relaxed">
               <ReactMarkdown>{animatedSummary}</ReactMarkdown>
-              
-              {/* Blinking Cursor */}
               {animatedSummary.length < rawSummary.length && (
                  <span className="inline-block w-2 h-4 bg-[#1df2ff] ml-1 animate-pulse align-middle"/>
               )}
@@ -135,16 +120,8 @@ export default function AudioAgent() {
           </div>
 
           <div className="flex items-end justify-end mt-3">
-            <button className="
-              bg-[#1df2ff30] 
-              py-1 px-3 
-              rounded-3xl 
-              text-[#1df2ff] 
-              border border-[#1df2ff70]
-              hover:bg-[#1df2ff50]
-              transition
-            ">
-              <Link href="/audio">View Details</Link>
+            <button className="bg-[#1df2ff30] py-1 px-3 rounded-3xl text-[#1df2ff] border border-[#1df2ff70] hover:bg-[#1df2ff50] transition">
+              <Link href="/audio">View Full Report</Link>
             </button>
           </div>
 
